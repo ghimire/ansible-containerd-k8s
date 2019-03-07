@@ -1,0 +1,29 @@
+---
+- hosts: all 
+  become: true
+  tasks:
+    - include_vars: vars/vars.yaml # Contains tasks variables for installer
+    - include_tasks: tasks/bootstrap.yaml # Contains tasks bootstrap components for ubuntu systems 
+    - include_tasks: tasks/k8s.yaml # Contains tasks kubernetes component installation
+    - include_tasks: tasks/containerd.yaml # Contains tasks for pulling containerd components
+
+    - name: "Check kubelet args in kubelet config"
+      shell: grep "^KUBELET_EXTRA_ARGS=.*containerd.sock.*" /etc/default/kubelet || true
+      register: check_args
+
+    - name: "Add runtime args in kubelet conf"
+      lineinfile:
+        path: "/etc/default/kubelet"
+        regexp: '^KUBELET_EXTRA_ARGS='
+        line: "KUBELET_EXTRA_ARGS= --container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+      when: check_args.stdout == ""
+    
+    - name: "Start Kubelet"
+      systemd: name=kubelet daemon_reload=yes state=started enabled=yes
+    
+    # TODO This needs to be removed once we have consistent concurrent pull results
+    - name: "Pre-pull pause container image"
+      shell: |
+        /usr/local/bin/ctr pull k8s.gcr.io/pause:3.1
+        /usr/local/bin/crictl --runtime-endpoint unix:///run/containerd/containerd.sock \
+        pull k8s.gcr.io/pause:3.1

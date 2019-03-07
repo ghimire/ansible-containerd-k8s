@@ -1,0 +1,24 @@
+---
+- name: "Add gpg key (Ubuntu)"
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: "Add kubernetes source list (Ubuntu)"
+  apt_repository:
+    repo: "deb http://apt.kubernetes.io/ kubernetes-{{ distribution_release }} main"
+    state: present
+    filename: "kubernetes"
+
+- name: "Update the repository cache (Ubuntu)"
+  apt: 
+    update_cache: yes
+
+- name: "Install kubelet, kubectl, kubeadm"
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - kubelet
+    - kubectl
+    - kubeadm

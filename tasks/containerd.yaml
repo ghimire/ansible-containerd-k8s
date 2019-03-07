@@ -1,0 +1,46 @@
+---
+- name: "Get Containerd"
+  unarchive:
+    src: "https://storage.googleapis.com/cri-containerd-release/cri-containerd-{{ containerd_release_version }}.linux-amd64.tar.gz"
+    dest: "/"
+    remote_src: yes
+
+- name: install cri-tools
+  apt:
+    name: cri-tools
+    state: present
+    update_cache: true
+
+- name: point crictl to containerd
+  shell: "echo 'runtime-endpoint: unix:///run/containerd/containerd.sock' > /etc/crictl.yaml"
+  args:
+    creates: /etc/crictl.yaml
+
+- name: "Start Containerd"
+  systemd: name=containerd daemon_reload=yes state=started enabled=yes
+
+- name: "Load br_netfilter kernel module"
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: "Load overlay kernel module"
+  modprobe:
+    name: overlay
+    state: present
+
+- name: "Set bridge-nf-call-iptables" 
+  sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: '1'
+
+- name: "Set bridge-nf-call-ip6tables" 
+  sysctl:
+    name: net.bridge.bridge-nf-call-ip6tables
+    value: '1'        
+
+- name: "Set ip_forward" 
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+

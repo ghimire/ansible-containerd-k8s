@@ -1,0 +1,27 @@
+---
+- name: "Install required packages on Ubuntu"
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+      - unzip
+      - tar
+      - apt-transport-https
+      - btrfs-tools
+      - libseccomp2
+      - socat
+      - util-linux
+
+- name: create the 'ubuntu' user
+  user: name=ubuntu append=yes state=present createhome=yes shell=/bin/bash
+
+- name: allow 'ubuntu' to have passwordless sudo
+  lineinfile:
+    dest: /etc/sudoers
+    line: 'ubuntu ALL=(ALL) NOPASSWD: ALL'
+    validate: 'visudo -cf %s'
+
+- name: set up authorized keys for the ubuntu user
+  authorized_key: user=ubuntu key="{{item}}"
+  with_file:
+    - ~/.ssh/id_rsa.pub      
